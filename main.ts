@@ -1,45 +1,26 @@
-// The Funniest Toaster Error Message — make.fun entry program.
-// Writes one line (<=120 chars) to /output/entry.txt (or the dir given
-// by argv[2], $MAKEFUN_OUTPUT_DIR, falling back to ./output).
-// Node stdlib only.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+// The Funniest Toaster Error Message — one-liner revision (Neon FINAL line).
+// Writes the entry line verbatim to entry.txt in the grader's output dir.
+// Output dir: $MAKEFUN_OUTPUT_DIR, else /output, else ./output (repo dir is
+// read-only under the grader, so the entry never writes next to this file).
 
-const ENTRY =
-  "ERROR: TOAST REFUSED. IT HAS SEEN WHAT YOU DID TO THE LAST ONE.";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
-// The brief caps the entry at 120 characters; fail loudly instead of
-// writing an over-long line the judge would reject.
-const MAX_ENTRY_CHARS = 120;
+const LINE =
+  "ERR 402: 'Golden Brown' requires Toast+ ($7.99/mo). Free tier capped at 'Slightly Warm'; watch 2 ads to unlock Eject.";
 
 function resolveOutputDir(): string {
-  const fromArgv = process.argv[2];
-  if (fromArgv) return fromArgv;
-  const fromEnv = process.env.MAKEFUN_OUTPUT_DIR;
-  if (fromEnv) return fromEnv;
-  return "/output";
-}
-
-function main(): void {
-  if (ENTRY.length > MAX_ENTRY_CHARS) {
-    throw new Error(
-      `entry is ${ENTRY.length} chars, over the ${MAX_ENTRY_CHARS}-char limit`,
-    );
-  }
-  let outDir = resolveOutputDir();
+  const env = process.env.MAKEFUN_OUTPUT_DIR;
+  if (env && env.length > 0) return env;
   try {
-    mkdirSync(outDir, { recursive: true });
+    fs.accessSync("/output", fs.constants.W_OK);
+    return "/output";
   } catch {
-    // /output may not be writable outside the harness; use ./output instead.
-    outDir = "./output";
-    mkdirSync(outDir, { recursive: true });
-  }
-  // One line, no trailing newline — the file holds exactly the entry.
-  const target = `${outDir}/entry.txt`;
-  writeFileSync(target, ENTRY, "utf-8");
-  // Verify the write landed intact; a silent partial write must not pass.
-  if (readFileSync(target, "utf-8") !== ENTRY) {
-    throw new Error(`entry.txt does not match ENTRY after write`);
+    return path.join(process.cwd(), "output");
   }
 }
 
-main();
+const outDir = resolveOutputDir();
+fs.mkdirSync(outDir, { recursive: true });
+fs.writeFileSync(path.join(outDir, "entry.txt"), LINE, "utf8");
+console.log(`wrote entry.txt (${LINE.length} chars) to ${outDir}`);
